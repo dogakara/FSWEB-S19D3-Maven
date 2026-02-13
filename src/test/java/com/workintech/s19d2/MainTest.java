@@ -11,11 +11,6 @@ import com.workintech.s19d2.repository.RoleRepository;
 import com.workintech.s19d2.service.AccountServiceImpl;
 import com.workintech.s19d2.service.AuthenticationService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import java.util.*;
-
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +23,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -47,13 +45,12 @@ class MainTest {
     private Member member;
     private Role roleUser;
     private Role roleAdmin;
-
     private Role role;
 
     @Mock
     private PasswordEncoder passwordEncoder;
-    private AccountServiceImpl accountService;
 
+    private AccountServiceImpl accountService;
     private Account account;
     private AuthenticationService authenticationService;
 
@@ -66,20 +63,16 @@ class MainTest {
     @Mock
     private RoleRepository mockRoleRepository;
 
-
     @BeforeEach
     void setUp() {
-
         member = new Member();
         roleUser = new Role();
         roleAdmin = new Role();
-
 
         roleUser.setId(1L);
         roleUser.setAuthority("USER");
         roleAdmin.setId(2L);
         roleAdmin.setAuthority("ADMIN");
-
 
         member.setEmail("test@example.com");
         member.setPassword("password");
@@ -126,15 +119,12 @@ class MainTest {
 
     @Test
     void testAccountSettersAndGetters() {
-
         Long expectedId = 1L;
         String expectedName = "Test Account";
-
 
         Account account = new Account();
         account.setId(expectedId);
         account.setName(expectedName);
-
 
         assertEquals(expectedId, account.getId(), "The ID returned was not the same value set.");
         assertEquals(expectedName, account.getName(), "The name returned was not the same value set.");
@@ -150,32 +140,27 @@ class MainTest {
     @Test
     @DisplayName("GrantedAuthority Implementation")
     void grantedAuthorityImplementation() {
-
         String authority = role.getAuthority();
 
         assertNotNull(authority, "Authority should not be null.");
         assertEquals("USER", authority, "The authority should return 'USER'.");
     }
 
-
     @Test
-    @DisplayName("AccountRepository should be  instance of JpaRepository")
+    @DisplayName("AccountRepository should be instance of JpaRepository")
     void accountRepositoryInstanceCheck() {
-
-        assertTrue(mockAccountRepository instanceof JpaRepository, "MovieRepository should be an instance of JpaRepository");
+        assertTrue(mockAccountRepository instanceof JpaRepository, "AccountRepository should be an instance of JpaRepository");
     }
 
     @Test
-    @DisplayName("MemberRepository should be  instance of JpaRepository")
+    @DisplayName("MemberRepository should be instance of JpaRepository")
     void memberRepositoryInstanceCheck() {
-
         assertTrue(mockMemberRepository instanceof JpaRepository, "MemberRepository should be an instance of JpaRepository");
     }
 
     @Test
-    @DisplayName("RoleRepository should be  instance of JpaRepository")
+    @DisplayName("RoleRepository should be instance of JpaRepository")
     void roleRepositoryInstanceCheck() {
-
         assertTrue(mockRoleRepository instanceof JpaRepository, "RoleRepository should be an instance of JpaRepository");
     }
 
@@ -191,17 +176,16 @@ class MainTest {
         assertEquals(message, response.message(), "Message should match the one provided");
     }
 
-
     @Test
     @DisplayName("RegistrationMember Data Storage")
     void registrationMemberDataStorage() {
         String email = "user@example.com";
         String password = "securePassword123";
 
-        RegistrationMember member = new RegistrationMember(email, password);
+        RegistrationMember registrationMember = new RegistrationMember(email, password);
 
-        assertEquals(email, member.email(), "Email should match the one provided");
-        assertEquals(password, member.password(), "Password should match the one provided");
+        assertEquals(email, registrationMember.email(), "Email should match the one provided");
+        assertEquals(password, registrationMember.password(), "Password should match the one provided");
     }
 
     @Test
@@ -232,14 +216,24 @@ class MainTest {
     @DisplayName("Register New Member Successfully")
     void registerNewMemberSuccessfully() {
         given(mockMemberRepository.findByEmail(anyString())).willReturn(Optional.empty());
-        given(passwordEncoder.encode(anyString())).willReturn("password");
-        given(mockRoleRepository.findByAuthority("ADMIN")).willReturn(Optional.of(role));
-        given(mockMemberRepository.save(any(Member.class))).willReturn(member);
+        given(passwordEncoder.encode(anyString())).willReturn("encodedPassword");
+
+        Role userRole = new Role();
+        userRole.setId(1L);
+        userRole.setAuthority("USER");
+        given(mockRoleRepository.findByAuthority("USER")).willReturn(Optional.of(userRole));
+
+        Member savedMember = new Member();
+        savedMember.setEmail("test@example.com");
+        savedMember.setPassword("encodedPassword");
+        savedMember.setRoles(List.of(userRole));
+
+        given(mockMemberRepository.save(any(Member.class))).willReturn(savedMember);
 
         Member registeredMember = authenticationService.register("test@example.com", "password");
 
         assertThat(registeredMember.getEmail()).isEqualTo("test@example.com");
-        assertThat(registeredMember.getPassword()).isEqualTo("password");
+        assertThat(registeredMember.getPassword()).isEqualTo("encodedPassword");
         verify(mockMemberRepository).save(any(Member.class));
     }
 
